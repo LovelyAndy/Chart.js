@@ -1078,6 +1078,108 @@ describe('Chart', function() {
       }, 0);
     });
 
+    // https://github.com/chartjs/Chart.js/issues/9875
+    it('should detect detach/attach in series', function(done) {
+      var chart = acquireChart({
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      }, {
+        canvas: {
+          style: ''
+        },
+        wrapper: {
+          style: 'width: 320px; height: 350px'
+        }
+      });
+
+      var wrapper = chart.canvas.parentNode;
+      var parent = wrapper.parentNode;
+
+      waitForResize(chart, function() {
+        expect(chart).toBeChartOfSize({
+          dw: 320, dh: 350,
+          rw: 320, rh: 350,
+        });
+
+        done();
+      });
+
+      parent.removeChild(wrapper);
+      parent.appendChild(wrapper);
+    });
+
+    it('should detect detach/attach/detach in series', function(done) {
+      var chart = acquireChart({
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      }, {
+        canvas: {
+          style: ''
+        },
+        wrapper: {
+          style: 'width: 320px; height: 350px'
+        }
+      });
+
+      var wrapper = chart.canvas.parentNode;
+      var parent = wrapper.parentNode;
+
+      waitForResize(chart, function() {
+        fail();
+      });
+
+      parent.removeChild(wrapper);
+      parent.appendChild(wrapper);
+      parent.removeChild(wrapper);
+
+      setTimeout(function() {
+        expect(chart.attached).toBeFalse();
+        done();
+      }, 100);
+    });
+
+    it('should detect attach/detach in series', function(done) {
+      var chart = acquireChart({
+        options: {
+          responsive: true,
+          maintainAspectRatio: false
+        }
+      }, {
+        canvas: {
+          style: ''
+        },
+        wrapper: {
+          style: 'width: 320px; height: 350px'
+        }
+      });
+
+      var wrapper = chart.canvas.parentNode;
+      var parent = wrapper.parentNode;
+
+      parent.removeChild(wrapper);
+
+      setTimeout(function() {
+        expect(chart.attached).toBeFalse();
+
+        waitForResize(chart, function() {
+          fail();
+        });
+
+        parent.appendChild(wrapper);
+        parent.removeChild(wrapper);
+
+        setTimeout(function() {
+          expect(chart.attached).toBeFalse();
+
+          done();
+        }, 100);
+      }, 100);
+    });
+
     // https://github.com/chartjs/Chart.js/issues/4737
     it('should resize the canvas when re-creating the chart', function(done) {
       var chart = acquireChart({
@@ -1121,7 +1223,7 @@ describe('Chart', function() {
       });
     });
 
-    it('should resize the canvas if attached to the DOM after construction with mutiple parents', function(done) {
+    it('should resize the canvas if attached to the DOM after construction with multiple parents', function(done) {
       var canvas = document.createElement('canvas');
       var wrapper = document.createElement('div');
       var wrapper2 = document.createElement('div');
@@ -1848,7 +1950,7 @@ describe('Chart', function() {
       expect(metasets[2].order).toEqual(3);
       expect(metasets[3].order).toEqual(4);
     });
-    it('should be moved when datasets are removed from begining', function() {
+    it('should be moved when datasets are removed from beginning', function() {
       this.chart.data.datasets.splice(0, 2);
       this.chart.update();
       const metasets = this.chart._metasets;
@@ -1907,6 +2009,26 @@ describe('Chart', function() {
       expect(metasets[1].label).toEqual('3');
       expect(metasets[2].label).toEqual('2');
       expect(metasets[3].label).toEqual('new');
+    });
+  });
+
+  describe('_destroyDatasetMeta', function() {
+    beforeEach(function() {
+      this.chart = acquireChart({
+        type: 'line',
+        data: {
+          datasets: [
+            {label: '1', order: 2},
+            {label: '2', order: 1},
+            {label: '3', order: 4},
+            {label: '4', order: 3},
+          ]
+        }
+      });
+    });
+    it('cleans up metasets when the chart is destroyed', function() {
+      this.chart.destroy();
+      expect(this.chart._metasets).toEqual([undefined, undefined, undefined, undefined]);
     });
   });
 
